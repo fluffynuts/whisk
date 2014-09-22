@@ -1,0 +1,299 @@
+cordova + web starter kit notes
+
+(pre-amble: when you see a line prefixed with "> ", it's a command you can run from cmd.exe.
+to run it, obviously strip out the leading "> ". So if you see:
+> run_stuff.bat
+You would open a console and type:
+run_stuff.bat
+and press enter
+
+
+Useful links:
+1) Cordova CLI reference: http://cordova.apache.org/docs/en/3.5.0//guide_cli_index.md.html#The%20Command-Line%20Interface
+2) Getting started with Web Starter Kit: https://developers.google.com/web/fundamentals/tools/setup/setup_kit
+
+
+Pre-requisites for the entire process:
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+-- lazy people can start with 0_Setup.cmd here (: --
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+1) Package management for some useful tools: go get Chocolatey from https://chocolatey.org/
+    (or, just run this in a console):
+   > @powershell -NoProfile -ExecutionPolicy unrestricted -Command "iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))" && SET PATH=%PATH%;%ALLUSERSPROFILE%\chocolatey\bin"
+2) you need some form of the commandline unzip to do a later step as prescribed, so you can
+   > choco install devbox-unzip
+    or better, but takes much longer: get gnuwin, because it's useful
+   > choco install gnuwin
+    - note that gnuwin takes quite a while to install; if, for some reason, you interrupt it
+        and want to pick up later, you can do:
+    > choco install -force gnuwin
+3) you're going to spend some time in a console. You might as well get ConEmu:
+   > choco install conemu
+    - and start using it, of course! ConEmu is prettier, properly resizable and does tabbing.
+4) you need git for this
+    > where git
+    should print out a path. If not, do 
+    > choco install git
+    or go install SourceTree, set up and allow it to download git and add 
+      that git to your path
+Web Starter Kit pre-requisites:
+
+1) install pre-requisites as per https://developers.google.com/web/fundamentals/tools/setup/setup_kit 
+    - install node.js
+      > choco install nodejs.install
+    - install ruby -- ONLY IF YOU DON'T HAVE IT (otherwise you'll lose your existing gems)
+      > choco install ruby1.9
+    - install sass:
+        > gem install sass
+    - install gulp
+        > npm install -g gulp
+    - for android, let's get the SDK now (you can carry on with the rest as
+      this comes down)
+        > choco install android-sdk
+    - this puts the Android SDK under %LOCALAPPDATA%\Android\android-sdk
+        - in there, you can find the SDK Manager and the AVD Manager
+        - you will need to add the tools folder to your path! Don't use setx for this
+        as it does the WRONG thing if your PATH variable is longer than 1024 chars ):
+        - you will also need platform-tools in your path (again, DON'T USE SETX)
+            - so you should have the following in your path:
+                %LOCALAPPDATA%\Android\android-sdk\tools
+                %LOCALAPPDATA%\Android\android-sdk\platform-tools
+        - when the Android SDK is in your path, you should be able to run:
+        > where android
+        and actually get a path back, not a line starting with "INFO"
+    - install cordova
+        > npm install -g cordova
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+-- end of 0_Setup.cmd's processing --
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+Time for an app!
+
+Part 1: Let's create a basic app shell with Web Starter Kit
+
+-- start of NewWebStarterKitApp.cmd here
+
+1) clone the web starter kit somewhere
+   > git clone https://github.com/google/web-starter-kit.git <web starter kit place>
+
+3) Create a copy for your project
+   > mkdir C:\Path\To\Project
+   > cd <web starter kit place>
+   > git archive master --format zip > %TEMP%\wsk.zip
+   - unzip the file it created at <some temp location> into your source root
+     > cd C:\Path\To\Project
+     > mkdir source
+     > cd source
+     > unzip %TEMP%\wsk.zip
+
+4) install local dependencies for your project:
+   > cd C:\Path\To\Project\source
+   > npm install
+        - note that, if you get oddness at some point, first try:
+        > npm cache clean
+        > npm update
+
+5) Create the cordova app. In the root of your source folder do:
+    > mkdir dist
+    > cordova create dist com.yourapp.id YourAppNam 
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+-- if you're using Mark's scripts, you're on your own from here... --
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+6) modify gulpfile.js to use the www folder in the created cordova folder
+    wherever it would have used the folder 'dist'. If you used the dist folder
+    above, change all references to 'dist' to be 'dist/www'
+    NB: especially important is to make sure that the 'clean' task looks at dist/www
+
+7) Because of how Cordova and Web Starter Kit do things (and then interact), we need to
+    make some modifications:
+    a) rename app\scripts\main.js app\scripts\999_main.js
+        - add this to the end of the file, just before the last line ( })();):
+            window.closeMenu = closeMenu;
+            window.toggleMenu = toggleMenu;
+        - this exports the menu interactions into the global namespace. My shell
+            app.js uses that
+        - 999_main.js may be in this folder -- use if you're a special combination
+            of brave and lazy.
+    b) copy cordova.js into your app folder
+       - this is a shim which fakes out the parts of cordova I've used so far
+         and ensures that the real cordova.js is loaded at runtime
+    c) copy in the libs (jquery especially, jquery.pullToRefresh if you want that)
+    d) if you want to store and retrieve user prefs, copy in 002_PrefsHelper.js and
+       do:
+        > cordova plugin add me.apla.cordova.app-preferences
+    e) if you want to open links in the user's browser, copy in 001_WebHelper.js
+       and do:
+       > cordova plugin add https://github.com/Initsogar/cordova-webintent
+       (there's more to it than that, but we'll come back to that)
+    f) copy 998_app.js into your scripts folder. This is a shell app to get you going.
+    g) modify index.html to reference these scripts
+        
+    h) modify index.html to take out google analytics
+    i) remove basic.html
+    j) copy in .jshintrc to allow double-quotes for strings in your javascript
+
+8) build your app with:
+    > gulp
+    - if you get an error about an invalid option -strip, modify your
+      gulpfile.js in the 'images' task, commenting out the pipe with
+      $.imagemin in it -- for some reason, optipng (which imagemin uses)
+      doesn't support the -strip option (it's way behind the current
+      version), but imagemin seems to think that it does. Your images task
+      should probably look like:
+
+        // Optimize Images
+        gulp.task('images', function () {
+        return gulp.src('app/images/**/*')
+            //.pipe($.cache($.imagemin({
+            //  progressive: true,
+            //  interlaced: true
+            //})))
+            .pipe(gulp.dest(distFolder('images')))
+            .pipe($.size({title: 'images'}));
+        });
+
+
+9) test that it is built with:
+    > gulp serve
+    you can press ctrl-c to stop this
+
+Part 2: let's turn this into an android app
+
+1) you're going to need an emulator and SDK libraries for Android:
+    > android sdk
+    - select everything from the latest SDK that you see there. Avoid SDKs
+      with the "W" affix -- they're for Android Wear. Also, avoid previews 
+      for now; as of the time of writing, you'll probably want 4.4.2 and
+      all of the associated stuff
+    > android avd
+    - create a virtual machine using the sdk you downloaded with device specs
+      that you like, for example:
+        AVD Name: 4.4.2_x86
+        Device: Nexus 7 (2012) (7", 800x1280)
+        Target: Android 4.4.2 - API Level 19
+        CPU/ABI: Intel Atom (x86)
+        Keyboard: [x] Hardware keyboard present
+        Skin: Dynamic
+        Front Camera: None
+        Back Camera: None
+        Memory Options: RAM: 1024  VM Heap: 32
+        Interal Storage: 666 MiB
+        SD Card: None confgured
+        Emulation Options: [x] Snapshot [ ] Use Host GPU
+    > emulation is MUCH faster if you use HAXM
+        - 
+        - if you have Hyper-V running, though, you need to disable it (as Hyper-V
+            plays nicely with NO-ONE)
+            > bcdedit /set hypervisorlaunchtype off
+            - more info here:
+            http://www.hanselman.com/blog/SwitchEasilyBetweenVirtualBoxAndHyperVWithABCDEditBootEntryInWindows81.aspx 
+        
+
+2) install java
+    > java -version
+        should ouput version information, like 1.7.0_something
+    if you get "command not found" or something like "not recognised as an internal 
+    or external command", you need to actually install java
+    > choco install javaruntime
+    - java isn't enough -- you need the jdk :/
+    > choco install java.jdk
+
+2) install ant
+   > choco install ant
+   check that it's in your path:
+   > where ant
+
+3) let's tell the cordova app to support Android:
+   > cd dist
+   > cordova platform add android
+
+4) Time to build:
+    > cordova build
+    > cordova emulate android --target=4.4.2_x86
+
+    - note that your first run of the emulator will take a /very/ long
+      time to boot up. It gets better later (:
+    - you will have to find and run your app in the emulator
+
+
+Dev:
+The above should have gotten you a simple app. However, we still need to tweak
+stuff to get Cordova to play nicely.
+
+1) you need to include cordova.js in your index.html. There's a shim cordova.js in the
+    folder you got this text file from. It emulates the deviceready event and brings
+    in the real cordova when you're on a device. At some point later, it may be
+    fleshed out with more cordova shimming.
+    - My webHelper script allows for opening urls in the OS native browser
+    - My PrefsHelper.js helps with using the prefs plugin when devving in the browser
+        by shimming out the required functions
+    - Note that *my* cordova.js REQUIRES jquery, so you should link that in too. And
+        if you want to use my pullToRefresh jquery plugin, you'll need that. The final
+        scripts listing you would need (to start with) would be:
+
+    <script type="text/javascript" src="cordova.js"></script>
+    <script type="text/javascript" src="lib/jquery.js"></script>
+    <script type="text/javascript" src="lib/jquery.pullToRefresh.js"></script>
+    <script type="text/javascript" src="scripts/001_WebHelper.js"></script>
+    <script type="text/javascript" src="scripts/002_PrefsHelper.js"></script>
+    <script type="text/javascript" src="scripts/998_app.js"></script>
+    <script type="text/javascript" src="scripts/999_main.js"></script>
+                 
+
+
+Notes:
+Remote debugging via Chrome appears to require the adb daemon to be running, which
+you can get with:
+> adb devices
+
+the "menubutton" event in Cordova is unreliable: https://issues.apache.org/jira/browse/CB-1574
+
+If you're going to do cross-domain requests (typically, if you're loading anything using $.get,
+$.post or similar), you're going to run into an issue:
+Your app will be able to make the requests because it would be quite useless to not be able to.
+However, regular web browser security prohibits this kind of behaviour, so if you're going to
+use Chrome to dev your site (with gulp serve), you'll want this extension:
+https://chrome.google.com/webstore/detail/allow-control-allow-origi/nlfbmbojpeacfghkpbjhddihlkkiljbi/related?hl=en
+
+Opening web links in external windows:
+1) you want to convert / create links that use window.open for testing
+2) you want https://github.com/Initsogar/cordova-webintent for sharing intents on android
+3) -- not sure about other platforms
+
+* plugman offers a bit of simplification on plugin installation
+> npm install -g plugman
+
+TODO:
+1) Create a program to help with / automate the above
+2) Shim in an application icon
+3) Investigate Cordova and intent sharing
+4) Look at platform-alike css and how to automagically shim in at build time
+
+Application icon:
+(http://cordova.apache.org/docs/en/3.2.0/config_ref_images.md.html)
+stuff needs to be under dist/www/res/icons/android (for android) and similar for other
+platforms. However, dist/www is cleared up by gulp. So let's put that alongside dist
+(ie alongside app as well):
+ + res/icons/android
+put icons in there and let's get gulp to copy that in when it's done
+    - see gulp targets 'push' and 'cordova-build-android'
+    - note that for initial testing, I'm just targeting android here
+
+-- not quite...
+https://gist.github.com/LinusU/7515016
+- also need to mention it in config.xml
+http://stackoverflow.com/questions/17820492/how-to-add-app-icon-within-phonegap-projects
+    - cordova 3.5.0 is supposed to respect the config.xml element 'icon' for all
+       platforms, all targets;
+        - however, of course, it's not that simple. On Android, the default icon
+            is set up but all of the arb resolutions aren't. So you want lines like:
+    <icon src="www/res/icons/android/icon-36-ldpi.png" />
+    <icon src="www/res/icons/android/icon-36-ldpi.png" platform="android" density="ldpi" />
+    <icon src="www/res/icons/android/icon-48-mdpi.png" platform="android" density="mdpi" />
+    <icon src="www/res/icons/android/icon-72-hdpi.png" platform="android" density="hdpi" />
+    <icon src="www/res/icons/android/icon-96-xhdpi.png" platform="android" density="xhdpi" />

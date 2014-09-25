@@ -1,20 +1,27 @@
 (function() {
         try {
             function hasScriptTagForCordova() {
-                return $("body").find("script[src='cordova.js']").length > 0;
+                return $("html,body").find("script[src='cordova.js']").length > 0;
             }
             function addCordovaJs() {
-                $("body").append("<scri" + "pt type='text/javascript' src='cordova.js'></scr" + "ipt>");
+                var scriptTag = $("<scri" + "pt type='text/javascript' src='cordova.js'></scr" + "ipt>");
+                scriptTag.appendTo($("body"));
             }
             function doMagick() {
                 if (window.$ === undefined) {
                     return false;
                 }
-                if (!hasScriptTagForCordova()) {
+                if (!hasScriptTagForCordova() && (window.jasmine === undefined)) {
                     addCordovaJs();
                 } else {
                     if (window.cordova === undefined) {
                         window.cordova = {
+                        };
+                        window.device = {
+                            cordova: "Emulated",
+                            platform: "Emulated",
+                            uuid: "emulated",
+                            version: "1.0"
                         };
                         window.setTimeout(function checkDocumentReady() {
                             if (document.readyState === "complete") {
@@ -32,14 +39,15 @@
                 }
                 return true;
             }
-            function tryDoMagick() {
+            var tryDoMagick = function tryDoMagick () {
                 if (!doMagick()) {
+                    //window.setTimeout(tryDoMagick, 50);
                     window.setTimeout(function() {
                         tryDoMagick();
                     }, 50);
                 }
             }
             tryDoMagick();
-} catch (e) { 
-}
+    } catch (e) { 
+    }
 })();

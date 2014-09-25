@@ -45,6 +45,7 @@ var androidResFolders = function(target) {
                          'res', 'drawable', 'drawable-'].join('/');
     return [ resFolder + 'land-' + target, resFolder + 'port-' + target ];
 };
+var testFiles = ['app/cordova.js', 'app/lib/*.js', 'app/scripts/*.js', 'tests/*.js'];
 
 function cordovaIncluder() {
     var tag = new Buffer("<script type=\"text/javascript\" src=\"cordova.js\"></script>");
@@ -82,6 +83,18 @@ gulp.task('jshint', function () {
     //.pipe($.debug({verbose: DEBUG}))
     .pipe($.jshint.reporter('jshint-stylish'))
     .pipe($.if(!browserSync.active, $.jshint.reporter('default')));
+});
+
+
+gulp.task('test', function() {
+    return gulp.src(testFiles)
+            .pipe($.karma({
+                configFile: 'karma.gulp.conf.js',
+                action: 'run'
+            }))
+            .on('error', function(err) {
+                throw err;
+            });
 });
 
 // Optimize Images
@@ -184,7 +197,8 @@ gulp.task('serve', ['styles'], function () {
       baseDir: ['.tmp', 'app']
     }
   });
-
+    
+  gulp.watch(testFiles, ['test', reload]);
   gulp.watch(['app/**/*.html'], reload);
   gulp.watch(['app/styles/**/*.{scss,css}'], ['styles', reload]);
   gulp.watch(['app/scripts/**/*.js'], ['jshint']);
@@ -208,7 +222,7 @@ gulp.task('serve:dist', ['default'], function () {
 
 // Build Production Files, the Default Task
 gulp.task('default', ['clean'], function (cb) {
-  runSequence('styles', ['jshint', 'html', 'images', 'fonts', 'copy'], cb);
+  runSequence('styles', 'test', ['jshint', 'html', 'images', 'fonts', 'copy'], cb);
 });
 
 gulp.task('copy-res', function () {

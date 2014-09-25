@@ -244,7 +244,18 @@ stuff to get Cordova to play nicely.
     <script type="text/javascript" src="scripts/998_app.js"></script>
     <script type="text/javascript" src="scripts/999_main.js"></script>
                  
-
+2) Testing!
+    go get gulp-karma and karma
+    > npm install --save-dev gulp-karma karma
+    you'll probably want the junit reporter for karma
+    > npm install --save-dev karma-junit-reporter
+    you also want runners for browsers you want to target, eg:
+    > npm install --dave-dev karma-firefox-launcher karma-chrome-launcher karma-phantomjs-launcher
+   
+    there is a 'test' target in the included gulpfile.js which is called when you build with
+    > gulp
+    as well as when things change and using
+    > gulp serve
 
 Notes:
 Remote debugging via Chrome appears to require the adb daemon to be running, which

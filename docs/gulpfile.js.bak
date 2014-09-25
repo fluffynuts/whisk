@@ -24,6 +24,7 @@ var APP_NAME = '';  // please define your app name here
 var DEBUG = false;
 var gulp = require('gulp');
 var $ = require('gulp-load-plugins')();
+var through = require('through2');
 var del = require('del');
 var runSequence = require('run-sequence');
 var browserSync = require('browser-sync');
@@ -45,7 +46,21 @@ var androidResFolders = function(target) {
     return [ resFolder + 'land-' + target, resFolder + 'port-' + target ];
 };
 
-var through = require("through2");
+function cordovaIncluder() {
+    var tag = new Buffer("<script type=\"text/javascript\" src=\"cordova.js\"></script>");
+    var stream = through.obj(function(file, enc, cb) {
+        if (file.isBuffer()) {
+            var newContents = file.contents.toString().replace(/<head>/, "<head><script type=\"text/javascript\" src=\"cordova.js\"></script>");
+            file.contents = new Buffer(newContents);
+        } else if (file.isStream()) {
+            console.log("file is a stream:" + file.path);
+        }
+        this.push(file);
+        return cb();
+    });
+    return stream;
+}
+
 
 var AUTOPREFIXER_BROWSERS = [
   'ie >= 10',
@@ -72,10 +87,10 @@ gulp.task('jshint', function () {
 // Optimize Images
 gulp.task('images', function () {
   return gulp.src('app/images/**/*')
-    //.pipe($.cache($.imagemin({
-    //  progressive: true,
-    //  interlaced: true
-    //})))
+    .pipe($.cache($.imagemin({
+      progressive: true,
+      interlaced: true
+    })))
     .pipe(gulp.dest(distFolder('images')))
     .pipe($.size({title: 'images'}));
 });
@@ -114,21 +129,6 @@ gulp.task('styles', function () {
     .pipe(gulp.dest('.tmp/styles'))
     .pipe($.size({title: 'styles'}));
 });
-
-function cordovaIncluder() {
-    var tag = new Buffer("<script type=\"text/javascript\" src=\"cordova.js\"></script>");
-    var stream = through.obj(function(file, enc, cb) {
-        if (file.isBuffer()) {
-            var newContents = file.contents.toString().replace(/<head>/, "<head><script type=\"text/javascript\" src=\"cordova.js\"></script>");
-            file.contents = new Buffer(newContents);
-        } else if (file.isStream()) {
-            console.log("file is a stream:" + file.path);
-        }
-        this.push(file);
-        return cb();
-    });
-    return stream;
-}
 
 // Scan Your HTML For Assets & Optimize Them
 gulp.task('html', function () {
